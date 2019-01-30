@@ -3,11 +3,13 @@ module Tests
 open Xunit
 open BitBankApi
 open System.IO
-open System
 open Newtonsoft.Json.Linq
+open Xunit.Sdk
+open Xunit.Abstractions
 
-[<Fact>]
-let ``Should be able to use public api`` () =
+type PublicApiTests() =
+  [<Fact>]
+  let ``Should be able to use public api`` () =
     let date = Some "20181226"
     let resp = PublicApi.GetTransactions "btc_jpy" date
     Assert.NotNull(resp)
@@ -27,16 +29,19 @@ let getPrivate () =
     let apiSecret = (conf.GetValue("ApiSecret") :?> JValue).Value :?> string
     new PrivateApi(apiKey, apiSecret)
 
-[<Fact>]
-let `` Should get Assets `` () =
+type PrivateApiTests(output: ITestOutputHelper) =
+  [<Fact>]
+  member this.`` Should get Assets `` () =
     let api = getPrivate()
     let resp = api.GetAssets()
     Assert.NotNull(resp.Data.Assets)
+    Assert.NotEqual(0, resp.Success)
     ()
 
-[<Fact>]
-let `` Shuold get Order `` () =
-  let api = getPrivate()
-  let resp = api.GetOrder("")
-  Assert.True(false, "needs update")
-  ()
+  [<Fact>]
+  member this.`` Shuold get Order `` () =
+    let api = getPrivate()
+    let resp = api.GetOrder("1", "btc_jpy")
+    Assert.NotNull(resp)
+    Assert.NotEqual(0, resp.Success)
+    ()

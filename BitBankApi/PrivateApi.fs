@@ -11,6 +11,9 @@ open Newtonsoft.Json
 type GetAssetsResponse = JsonProvider<"""
     {"success":1,"data":{"assets":[{"asset":"jpy","amount_precision":4,"onhand_amount":"0.0000","locked_amount":"0.0000","free_amount":"0.0000","stop_deposit":false,"stop_withdrawal":false,"withdrawal_fee":{"threshold":"30000.0000","under":"540.0000","over":"756.0000"}},{"asset":"btc","amount_precision":8,"onhand_amount":"0.00000000","locked_amount":"0.00000000","free_amount":"0.00000000","stop_deposit":false,"stop_withdrawal":false,"withdrawal_fee":"0.00100000"},{"asset":"ltc","amount_precision":8,"onhand_amount":"0.00000000","locked_amount":"0.00000000","free_amount":"0.00000000","stop_deposit":false,"stop_withdrawal":false,"withdrawal_fee":"0.00100000"},{"asset":"xrp","amount_precision":6,"onhand_amount":"0.000000","locked_amount":"0.000000","free_amount":"0.000000","stop_deposit":false,"stop_withdrawal":false,"withdrawal_fee":"0.150000"},{"asset":"eth","amount_precision":8,"onhand_amount":"0.00000000","locked_amount":"0.00000000","free_amount":"0.00000000","stop_deposit":false }]}}
     """>
+type GetOrderResponse = JsonProvider<"""
+    {"success": 1,"data":{ "code": 0 }}
+    """>
 
 [<AutoOpen>]
 type PrivateApi(apiKey: string, apiSecret: string) =
@@ -29,25 +32,39 @@ type PrivateApi(apiKey: string, apiSecret: string) =
       req
     customizer
 
+  let encodeQueryString (items: #seq<string * _>): string =
+      "?" + String.concat "&" [ for k, v in items -> HttpUtility.UrlPathEncode k + "=" + HttpUtility.UrlPathEncode v]
+
   let post path query =
     let absPath = PrivateBaseUrl + path
     let customizer = getHttpRequestCustomizer absPath query
-    Http.Request(absPath, httpMethod = "post", customizeHttpRequest = customizer)
+    Http.Request(absPath, httpMethod = "POST", customizeHttpRequest = customizer)
 
-  let get path queryString =
+  let getWithQuery path query =
+    let queryString = query |> encodeQueryString
     let absPath = PrivateBaseUrl + path + queryString
     let customizer = getHttpRequestCustomizer absPath ("/v1" + path + queryString)
-    Http.Request(absPath, httpMethod = "get", customizeHttpRequest = customizer)
+    printf "Going to request to %s \n" absPath
+    printf "with query string %s \n" queryString
+    Http.Request(absPath, httpMethod = "GET", customizeHttpRequest = customizer)
+
+  let getWithNoneQuery path =
+    let absPath = PrivateBaseUrl + path
+    let customizer = getHttpRequestCustomizer absPath ("/v1" + path)
+    Http.Request(absPath, httpMethod = "GET", customizeHttpRequest = customizer)
+
+  let get path (query: (string * string) list option) =
+    match query with
+    | Some q -> getWithQuery path q
+    | None -> getWithNoneQuery path
 
   let formatBody response =
     let respString = response.Body.ToString()
-    let tmp = respString.Replace("Text\n", "").Replace(" ", "")
+    let tmp = respString.Replace("Text\n", "")
+                        .Replace("Text ", "")
+                        .Replace(" ", "")
     let json = tmp.Substring(1, tmp.Length - 2)
     json
-
-  let joinTuple t = fst t + "=" + (snd t).ToString()
-  let encodeQueryString (items: seq<string * _>): string =
-      items |> Seq.map(joinTuple >> HttpUtility.UrlPathEncode >> (+)"?") |> Seq.reduce((+))
 
   let encodeBody (items: Map<string, _>): string =
     let jtw = new JsonTextWriter(new System.IO.StringWriter())
@@ -63,26 +80,10 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     member this.Dispose() = hash.Dispose()
 
   member this.GetAssets() =
-    get "/user/assets" "" |> formatBody |> GetAssetsResponse.Parse
+    get "/user/assets" None |> formatBody |> GetAssetsResponse.Parse
 
-  member this.GetOrder order_id (pathpair: PathPair option) =
-    let pair = match pathpair with
-               | None -> ""
-               | Some p -> p
-    seq { yield ("pair", pair); yield ("order_id", order_id) }
-      |> encodeQueryString
+  member this.GetOrder (orderId, pair: PathPair) =
+    Some [("pair", pair); ("order_id", orderId)]
       |> get "/user/spot/order"
       |> formatBody
-      |> GetAssetsResponse.Parse
-
-    member this.CancelOrder order_id (pathpair: PathPair option) =
-    let pair = match pathpair with
-               | None -> ""
-               | Some p -> p
-    Map.empty
-      .Add("pair", pair)
-      .Add("order_id", order_id)
-      |> encodeBody
-      |> post "/user/spot/order"
-      |> formatBody
-      |> GetAssetsResponse.Parse
+      |> GetOrderResponse.Parse
