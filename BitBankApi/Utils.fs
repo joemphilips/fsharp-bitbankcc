@@ -39,7 +39,7 @@ module Utils =
 
   let UnixTimeNow () =
     let genesis = new DateTime(1970, 1, 1)
-    DateTime.UtcNow.Subtract(genesis).Ticks.ToString()
+    DateTime.UtcNow.Subtract(genesis).Ticks
 
   let byteToHex (bytes : byte[]) =
    let sb = System.Text.StringBuilder()

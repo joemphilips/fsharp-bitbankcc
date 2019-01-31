@@ -101,17 +101,19 @@ type WithdrawalResponse = JsonProvider<"""
 [<AutoOpen>]
 type PrivateApi(apiKey: string, apiSecret: string) =
   let hash = new HMACSHA256(Encoding.Default.GetBytes(apiSecret))
-  let nonce = UnixTimeNow()
+  let mutable nonce = UnixTimeNow()
 
   let getHttpRequestCustomizer absPath stringToCommit =
+    printf " nonce is %d \n" nonce
+    nonce <- nonce + 1L
     let utf8Enc = System.Text.UTF8Encoding()
-    let message = utf8Enc.GetBytes(nonce + stringToCommit)
+    let message = utf8Enc.GetBytes(nonce.ToString() + stringToCommit)
     let signature = byteToHex (hash.ComputeHash(message))
     let customizer (req: HttpWebRequest) =
       req.ContentType <- "application/json"
       req.Headers.Add("ACCESS-KEY", apiKey)
       req.Headers.Add("ACCESS-SIGNATURE", signature)
-      req.Headers.Add("ACCESS-NONCE", nonce)
+      req.Headers.Add("ACCESS-NONCE", nonce.ToString())
       req
     customizer
 
