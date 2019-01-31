@@ -32,24 +32,21 @@ let getPrivate () =
 type PrivateApiTests(output: ITestOutputHelper) =
   [<Fact>]
   member this.`` Should get assets `` () =
-    let api = getPrivate()
-    let resp = api.GetAssets()
+    let resp = getPrivate().GetAssets()
     Assert.NotNull(resp.Data.Assets)
     Assert.Equal(1, resp.Success)
     ()
 
   [<Fact>]
   member this.`` Should get order `` () =
-    let api = getPrivate()
-    let resp = api.GetOrder(14541507, "btc_jpy")
+    let resp = getPrivate().GetOrder(14541507, "btc_jpy")
     Assert.NotNull(resp)
     Assert.Equal(1, resp.Success)
     ()
 
   [<Fact>]
   member this.`` Should get active order `` () =
-    let api = getPrivate()
-    let resp = api.GetActiveOrders()
+    let resp = getPrivate().GetActiveOrders()
     Assert.NotNull(resp)
     Assert.Equal(1, resp.Success)
     ()
@@ -77,15 +74,13 @@ type PrivateApiTests(output: ITestOutputHelper) =
 
   [<Fact>]
   member this.`` Should get withdrawal account``() =
-    let api = getPrivate()
-    let resp = api.GetWithdrawalAccount("jpy")
+    let resp = getPrivate().GetWithdrawalAccount("jpy")
     Assert.NotNull(resp)
     printf "resp was %s" (resp.JsonValue.ToString())
     Assert.Equal(1, resp.Success)
 
   [<Fact>]
   member this.`` Should request withdrawal``() =
-    let api = getPrivate()
-    let resp = api.RequestWithdrawal("jpy", "10", "37195a40-3d70-11e8-9c3c-2bd004e45303")
+    let resp = getPrivate().RequestWithdrawal("jpy", "10", "37195a40-3d70-11e8-9c3c-2bd004e45303")
     Assert.NotNull(resp)
     Assert.Equal(1, resp.Success)

@@ -160,8 +160,8 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     | None -> getWithNoneQuery path
 
   let optToString = function
-    | Some i -> i.ToString() :> obj
-    | None -> "" :> obj
+                  | Some i -> i.ToString() :> obj
+                  | None -> "" :> obj
 
   interface IDisposable with
     member this.Dispose() = hash.Dispose()
