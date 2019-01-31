@@ -3,8 +3,8 @@ module Tests
 open Xunit
 open BitBankApi
 open System.IO
+open System
 open Newtonsoft.Json.Linq
-open Xunit.Sdk
 open Xunit.Abstractions
 
 type PublicApiTests() =
@@ -31,17 +31,61 @@ let getPrivate () =
 
 type PrivateApiTests(output: ITestOutputHelper) =
   [<Fact>]
-  member this.`` Should get Assets `` () =
+  member this.`` Should get assets `` () =
     let api = getPrivate()
     let resp = api.GetAssets()
     Assert.NotNull(resp.Data.Assets)
-    Assert.NotEqual(0, resp.Success)
+    Assert.Equal(1, resp.Success)
     ()
 
   [<Fact>]
-  member this.`` Shuold get Order `` () =
+  member this.`` Should get order `` () =
     let api = getPrivate()
-    let resp = api.GetOrder("1", "btc_jpy")
+    let resp = api.GetOrder(14541507, "btc_jpy")
     Assert.NotNull(resp)
-    Assert.NotEqual(0, resp.Success)
+    Assert.Equal(1, resp.Success)
     ()
+
+  [<Fact>]
+  member this.`` Should get active order `` () =
+    let api = getPrivate()
+    let resp = api.GetActiveOrders()
+    Assert.NotNull(resp)
+    Assert.Equal(1, resp.Success)
+    ()
+
+  [<Fact>]
+  member this.`` Should post, get and cancel order `` () =
+    let api = getPrivate()
+    let pair = "btc_jpy"
+    let postResp1 = api.PostOrder(pair, amount = "0.01", price = 1000, side = "buy", orderType = "market")
+    let postResp2 = api.PostOrder(pair, amount = "0.01", price = 1001, side = "buy", orderType = "market")
+    let postResp3 = api.PostOrder(pair, amount = "0.01", price = 1002, side = "buy", orderType = "market")
+    Assert.NotNull(postResp1)
+    Assert.NotEqual(1, postResp1.Success)
+    let resp = api.GetOrder(postResp1.Data.OrderId, pair)
+    Assert.NotNull(resp)
+    Assert.NotEqual(1, resp.Success)
+    let cancelResp = api.CancelOrder(postResp1.Data.OrderId, pair)
+    Assert.NotNull(cancelResp)
+    Assert.NotEqual(1, cancelResp.Success)
+
+    let cancelsResp = api.CancelOrders([|postResp2.Data.OrderId; postResp3.Data.OrderId|], pair)
+    Assert.NotNull(cancelsResp)
+    Assert.NotEqual(1, cancelsResp.Success)
+    ()
+
+  [<Fact>]
+  member this.`` Should get withdrawal account``() =
+    let api = getPrivate()
+    let resp = api.GetWithdrawalAccount("jpy")
+    Assert.NotNull(resp)
+    printf "resp was %s" (resp.JsonValue.ToString())
+    Assert.Equal(1, resp.Success)
+
+  [<Fact>]
+  member this.`` Should request withdrawal``() =
+    let api = getPrivate()
+    let resp = api.RequestWithdrawal("jpy", "10", "37195a40-3d70-11e8-9c3c-2bd004e45303")
+    Assert.NotNull(resp)
+    Assert.Equal(1, resp.Success)
