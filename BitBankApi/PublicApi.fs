@@ -3,7 +3,6 @@ open FSharp.Data
 open BitBankApi.Utils
 open System.Net.Http
 
-module PublicApi =
   type GetTransactionReponse = JsonProvider<GetTransactionsUrl>
 
   type GetDailyTransactionReponse = JsonProvider<GetDailyTransactionsUrl>
@@ -14,21 +13,23 @@ module PublicApi =
 
   type GetCandleStickResponse = JsonProvider<GetCandleStickUrl>
 
+type PublicApi() =
+
   let client = new HttpClient()
 
   let path pair = BaseUrl + "/" + pair
 
-  let GetTransactions (pair: PathPair) (yyyymmdd: string option) =
+  member this.GetTransactions (pair: PathPair, yyyymmdd: string option) =
     let endpoint = match yyyymmdd with
                    | None -> path pair + "/transactions"
                    | Some date -> path pair + "/transactions" + "/" + date
     GetTransactionReponse.Load(endpoint)
   
-  let GetTicker (pair: PathPair) =
+  member this.GetTicker (pair: PathPair) =
     GetTickerResponse.Load(path pair + "/ticker")
 
-  let GetDepth (pair: PathPair) =
+  member this.GetDepth (pair: PathPair) =
     GetDepthResponse.Load(path pair + "/depth")
 
-  let GetCandleStick (pair: PathPair) (candleType: CandleType) (yyyymmdd: string) =
+  member this.GetCandleStick (pair: PathPair, candleType: CandleType, yyyymmdd: string) =
     GetCandleStickResponse.Load(path pair + "/candlestick/" + candleType + "/" + yyyymmdd)

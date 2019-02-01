@@ -3,8 +3,6 @@ module Tests
 open Xunit
 open BitBankApi
 open System.IO
-open System
-open System.Threading.Tasks
 open Newtonsoft.Json.Linq
 open Xunit.Abstractions
 
@@ -12,16 +10,17 @@ type PublicApiTests() =
   [<Fact>]
   let ``Should be able to use public api`` () =
     let date = Some "20181226"
-    let resp = PublicApi.GetTransactions "btc_jpy" date
+    let api = new PublicApi()
+    let resp = api.GetTransactions("btc_jpy", date)
     Assert.NotNull(resp)
 
-    let getTickerResp = PublicApi.GetTicker "btc_jpy"
+    let getTickerResp = api.GetTicker("btc_jpy")
     Assert.NotNull(getTickerResp)
 
-    let getDepthResp = PublicApi.GetDepth "btc_jpy"
+    let getDepthResp = api.GetDepth("btc_jpy")
     Assert.NotNull(getDepthResp)
 
-    let getCandleStickResp = PublicApi.GetCandleStick "btc_jpy" "1hour" "20181225"
+    let getCandleStickResp = api.GetCandleStick("btc_jpy", "1hour", "20181225")
     Assert.NotNull(getCandleStickResp)
 
 let getPrivate () =
@@ -76,7 +75,7 @@ type PrivateApiTests(output: ITestOutputHelper) =
 
   [<Fact>]
   member this.`` Should be able to use private api properly `` () =
-    let api = getPrivate()
+    use api = getPrivate()
     // get
     output.WriteLine("testing GetAssets")
     getAssetsTest(api)
