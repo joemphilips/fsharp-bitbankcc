@@ -98,6 +98,8 @@ type WithdrawalResponse = JsonProvider<"""
   }
   """>
 
+/// Intentially not supporting sync method (since nonce might not increment properly when it's used in an async method)
+/// This might have space for improvement.
 [<AutoOpen>]
 type PrivateApi(apiKey: string, apiSecret: string) =
   let hash = new HMACSHA256(Encoding.Default.GetBytes(apiSecret))
