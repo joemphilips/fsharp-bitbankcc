@@ -103,9 +103,10 @@ type PrivateApi(apiKey: string, apiSecret: string) =
   let hash = new HMACSHA256(Encoding.Default.GetBytes(apiSecret))
   let mutable nonce = UnixTimeNow()
 
-  let getHttpRequestCustomizer absPath stringToCommit =
+  let getHttpRequestCustomizer stringToCommit =
+    printf "string to commit is %s \n" stringToCommit
     printf " nonce is %d \n" nonce
-    nonce <- nonce + 1L
+    nonce <- nonce + 10000L // the api does not recognize if only increment one here.
     let utf8Enc = System.Text.UTF8Encoding()
     let message = utf8Enc.GetBytes(nonce.ToString() + stringToCommit)
     let signature = byteToHex (hash.ComputeHash(message))
@@ -123,8 +124,10 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     | :? (obj[]) as a -> [for i in a -> urlItemEncode k i] |> String.concat "&"
     | _ -> HttpUtility.UrlPathEncode k + "=" + HttpUtility.UrlPathEncode (v.ToString())
 
-  let encodeQueryString (items: #seq<string * _>): string =
-      "?" + String.concat "&" [ for k, v in items -> urlItemEncode k v]
+  let encodeQueryString (items: (string * _) list): string =
+    match items with
+    | [] -> ""
+    | _ ->  "?" + String.concat "&" [ for k, v in items -> urlItemEncode k v]
 
   let encodeBody (items: obj): string =
     JsonSerializer.ToJsonString(items)
@@ -138,20 +141,22 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     json
 
   let post path body =
-    let query = body |> encodeBody
+    let jsonBodyString = body |> encodeBody
     let absPath = PrivateBaseUrl + path
-    let customizer = getHttpRequestCustomizer absPath query
-    Http.Request(absPath, httpMethod = "POST", customizeHttpRequest = customizer) |> formatBody
+    printf "path to post is %s" absPath
+    let requestBody = TextRequest jsonBodyString
+    let customizer = getHttpRequestCustomizer jsonBodyString
+    Http.Request(absPath, httpMethod = "POST", body = requestBody, customizeHttpRequest = customizer) |> formatBody
 
   let getWithQuery path query =
     let queryString = query |> encodeQueryString
-    let absPath = PrivateBaseUrl + path + queryString
-    let customizer = getHttpRequestCustomizer absPath ("/v1" + path + queryString)
+    let absPath = PrivateBaseUrl  + path + queryString
+    let customizer = getHttpRequestCustomizer ("/v1" + path + queryString)
     Http.Request(absPath, httpMethod = "GET", customizeHttpRequest = customizer) |> formatBody
 
   let getWithNoneQuery path =
     let absPath = PrivateBaseUrl + path
-    let customizer = getHttpRequestCustomizer absPath ("/v1" + path)
+    let customizer = getHttpRequestCustomizer ("/v1" + path)
     Http.Request(absPath, httpMethod = "GET", customizeHttpRequest = customizer) |> formatBody
 
   let get path (query: (string * _) list option) =
@@ -181,14 +186,17 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     dict.Add("pair", pair :> obj)
     dict.Add("amount", amount :> obj)
     dict.Add("side", side :> obj)
-    dict.Add("orderType", orderType :> obj)
-    dict.Add("price", optToString price)
+    dict.Add("type", orderType :> obj)
+    if price <> None then dict.Add("price", optToString price)
     dict
-      |> post "/user/spot/cancel_orders"
+      |> post "/user/spot/order"
       |> OrderResponse.Parse
 
   member this.CancelOrder(orderId: int, pair: PathPair) =
-    Map.empty.Add("pair", pair).Add("order_id", orderId.ToString())
+    let dict = new Dictionary<string, obj>()
+    dict.Add("pair", pair)
+    dict.Add("order_id", orderId)
+    dict
       |> post "/user/spot/cancel_order"
       |> OrderResponse.Parse
 
@@ -206,31 +214,33 @@ type PrivateApi(apiKey: string, apiSecret: string) =
       |> OrdersResponse.Parse
 
   member this.GetActiveOrders(?pair: PathPair, ?count: int, ?fromId: int, ?endId: int, ?since: int, ?endDate: int) =
-    Some [
+    [
       ("pair", optToString pair);
       ("count", optToString count);
       ("from_id", optToString fromId);
       ("end_id", optToString endId);
       ("since", optToString since);
       ("end", optToString endDate);
-      ]
+    ] |> List.filter(fun tup -> snd tup <> ("" :> obj))
+      |> Some
       |> get "/user/spot/active_orders"
       |> OrdersResponse.Parse
 
   member this.GeTradeHistory(?pair: PathPair, ?count: int, ?orderId: int, ?since: int, ?endDate: int, ?order: string) =
-    Some [
+    [
       ("pair", optToString pair);
       ("count", optToString count);
       ("order_id", optToString orderId);
       ("since", optToString since);
       ("end", optToString endDate);
-      ]
+    ] |> List.filter(fun tup -> snd tup <> ("" :> obj))
+      |> Some
       |> get "/user/spot/trade_history"
       |> TradeHistoryResponse.Parse
 
   member this.GetWithdrawalAccount(asset: string) =
     Some [("asset", asset :> obj)]
-      |> get "/user/spot/withdrawal_account"
+      |> get "/user/withdrawal_account"
       |> WithdrawalAccountResponse.Parse
 
   member this.RequestWithdrawal(asset: string, amount: string, uuid: string, ?otpToken: string, ?smsToken: string) =
@@ -238,8 +248,8 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     dict.Add("asset", asset :> obj)
     dict.Add("amount", amount :> obj)
     dict.Add("uuid", uuid :> obj)
-    dict.Add("otp_token", optToString otpToken)
-    dict.Add("sms_token", optToString smsToken)
+    if otpToken <> None then dict.Add("otp_token", optToString otpToken)
+    if smsToken <> None then dict.Add("sms_token", optToString smsToken)
     dict
-      |> post "/user/spot/request_withdrawal"
+      |> post "/user/request_withdrawal"
       |> WithdrawalResponse.Parse
