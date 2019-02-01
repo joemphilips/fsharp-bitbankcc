@@ -104,9 +104,7 @@ type PrivateApi(apiKey: string, apiSecret: string) =
   let mutable nonce = UnixTimeNow()
 
   let getHttpRequestCustomizer stringToCommit =
-    printf "string to commit is %s \n" stringToCommit
-    printf " nonce is %d \n" nonce
-    nonce <- nonce + 10000L // the api does not recognize if only increment one here.
+    nonce <- nonce + 100L // the api does not recognize if only increment one here.
     let utf8Enc = System.Text.UTF8Encoding()
     let message = utf8Enc.GetBytes(nonce.ToString() + stringToCommit)
     let signature = byteToHex (hash.ComputeHash(message))
@@ -143,7 +141,6 @@ type PrivateApi(apiKey: string, apiSecret: string) =
   let post path body =
     let jsonBodyString = body |> encodeBody
     let absPath = PrivateBaseUrl + path
-    printf "path to post is %s" absPath
     let requestBody = TextRequest jsonBodyString
     let customizer = getHttpRequestCustomizer jsonBodyString
     Http.Request(absPath, httpMethod = "POST", body = requestBody, customizeHttpRequest = customizer) |> formatBody
@@ -245,9 +242,9 @@ type PrivateApi(apiKey: string, apiSecret: string) =
 
   member this.RequestWithdrawal(asset: string, amount: string, uuid: string, ?otpToken: string, ?smsToken: string) =
     let dict = new Dictionary<string, obj>()
-    dict.Add("asset", asset :> obj)
-    dict.Add("amount", amount :> obj)
-    dict.Add("uuid", uuid :> obj)
+    dict.Add("asset", asset)
+    dict.Add("amount", amount)
+    dict.Add("uuid", uuid)
     if otpToken <> None then dict.Add("otp_token", optToString otpToken)
     if smsToken <> None then dict.Add("sms_token", optToString smsToken)
     dict

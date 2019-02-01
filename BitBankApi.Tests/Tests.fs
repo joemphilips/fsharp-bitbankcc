@@ -78,13 +78,21 @@ type PrivateApiTests(output: ITestOutputHelper) =
   member this.`` Should be able to use private api properly `` () =
     let api = getPrivate()
     // get
+    output.WriteLine("testing GetAssets")
     getAssetsTest(api)
+    output.WriteLine("testing GetOrder")
     getOrderTest(api)
+    output.WriteLine("testing GetActiveOrder")
     getActiveOrderTest(api)
+    output.WriteLine("testing GetWithdrawalOrder")
     getWithdrawalTest(api)
 
     // post
+    output.WriteLine("testing CancelOrder")
     cancelOrderTest(api)
+    output.WriteLine("testing CancelOrders")
     cancelOrdersTest(api)
+    output.WriteLine("testing PostOrder")
     postOrderTest(api)
+    output.WriteLine("testing RequestWithdrawal")
     requestWithdrawalTest(api)
