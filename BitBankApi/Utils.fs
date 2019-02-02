@@ -11,6 +11,9 @@ module Utils =
   let PrivateBaseUrl = "https://api.bitbank.cc/v1"
 
   [<Literal>]
+  let ErrorCodeDescriptionUrl = "https://docs.bitbank.cc/error_code/"
+
+  [<Literal>]
   let StubPair = "/btc_jpy"
 
   [<Literal>]

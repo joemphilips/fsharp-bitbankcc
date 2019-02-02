@@ -8,107 +8,121 @@ open System.Text
 open System.Web
 open System.Collections.Generic
 open Utf8Json
+open Utf8Json.Resolvers
+
+type BitBankApiException(code: int) =
+  inherit Exception(sprintf "Error code was %s. See %s for details" (code.ToString()) ErrorCodeDescriptionUrl)
+  member val Code = code with get
+
+[<CLIMutable>]
+type Response<'T> = {
+  Success: int
+  Data: 'T
+}
+
+[<CLIMutable>]
+type ErrorCode = { Code: int }
+
+[<CLIMutable>]
+type ErrorResponse = {
+  Success: int
+  Data: ErrorCode
+}
 
 
-type GetAssetsResponse = JsonProvider<"""
-    {"success":1,"data":{ "code": 1, "assets":[{"asset":"jpy","amount_precision":4,"onhand_amount":"0.0000","locked_amount":"0.0000","free_amount":"0.0000","stop_deposit":false,"stop_withdrawal":false,"withdrawal_fee":{"threshold":"30000.0000","under":"540.0000","over":"756.0000"}},{"asset":"btc","amount_precision":8,"onhand_amount":"0.00000000","locked_amount":"0.00000000","free_amount":"0.00000000","stop_deposit":false,"stop_withdrawal":false,"withdrawal_fee":"0.00100000"},{"asset":"ltc","amount_precision":8,"onhand_amount":"0.00000000","locked_amount":"0.00000000","free_amount":"0.00000000","stop_deposit":false,"stop_withdrawal":false,"withdrawal_fee":"0.00100000"},{"asset":"xrp","amount_precision":6,"onhand_amount":"0.000000","locked_amount":"0.000000","free_amount":"0.000000","stop_deposit":false,"stop_withdrawal":false,"withdrawal_fee":"0.150000"},{"asset":"eth","amount_precision":8,"onhand_amount":"0.00000000","locked_amount":"0.00000000","free_amount":"0.00000000","stop_deposit":false }]}}
-    """>
-type OrderResponse = JsonProvider<"""
-    {
-     "success": 1,
-     "data": {
-       "code": 0 ,
-       "order_id": 0,
-       "pair": "btc_jpy",
-       "side": "buy",
-       "type": "market",
-       "start_amount": "0.1000",
-       "remaining_amount": "0.1000",
-       "executed_amount": "0.1000",
-       "price": "0.1000",
-       "average_price": "0.1000",
-       "ordered_at": 1400000000,
-       "status": "good"
-     }}
-    """>
+[<CLIMutable>]
+type WithdrawalFee = private {
+  Threshold: string
+  Under: string
+  Over: string
+}
 
-type OrdersResponse = JsonProvider<"""
-  {
-    "success": 1,
-    "orders": [
-    {
-     "data": {
-       "code": 0 ,
-       "order_id": 0,
-       "pair": "btc_jpy",
-       "side": "buy",
-       "type": "market",
-       "start_amount": "0.1000",
-       "remaining_amount": "0.1000",
-       "executed_amount": "0.1000",
-       "price": "0.1000",
-       "average_price": "0.1000",
-       "ordered_at": 1400000000,
-       "status": "good"
-     }}
-     ]
-    }""">
+[<CLIMutable>]
+type AssetRecord = {
+  Asset: string
+  AmountPrecision: int
+  OnhandAmount: string
+  LockedAmount: string
+  FreeAmount: string
+  StopDeposit: bool
+  StopWithdrawal: bool
+  WithdrawalFee: WithdrawalFee
+}
 
-type TradeHistoryResponse = JsonProvider<"""
-  {
-    "success": 1,
-    "trades": [
-      {"trade_id": 1111111},
-      {"pair": "btc_jpy"},
-      {"order_id": 100000},
-      {"side": "buy"},
-      {"type": "market"},
-      {"amount": "10000"},
-      {"price": "0.1000"},
-      {"marker_taker": "maker"},
-      {"fee_amount_base": "0.001"},
-      {"fee_amount_quote": "0.001"},
-      {"executed_at": 1111111}
-    ]
-  }""">
+[<CLIMutable>]
+type AssetsRecord = {
+  Assets: AssetRecord[]
+}
 
-type WithdrawalAccountResponse = JsonProvider<"""
- {
-   "success": 1,
-   "code": 10001,
-   "uuid": "37195a40-3d70-11e8-9c3c-2bd004e45303",
-   "label": "foobar",
-   "address": "3FcxyAjrC5fumngYg4LeNJAqPqq6QP3fKK"
- }
-""">
+[<CLIMutable>]
+type OrderRecord = {
+  OrderId: int
+  Pair: PathPair
+  Side: string
+  Type: string
+  StartAmount: string
+  RemainingAmount: string
+  ExecutedAmount: string
+  Price: string
+  AveragePrice: string
+  OrderedAt: string
+  Status: string
+}
 
-type WithdrawalResponse = JsonProvider<"""
-  {
-     "success": 1,
-     "code": 10001,
-     "uuid": "37195a40-3d70-11e8-9c3c-2bd004e45303",
-     "asset": "btc",
-     "amount": 0.01,
-     "account_uuid": "37195a40-3d70-11e8-9c3c-2bd004e45303",
-     "fee": "0.00001",
-     "status": "active",
-     "label": "foobar",
-     "txid": "47123199c08715c4375ed44796b80857be4b1fc5d145dd11f9192a988ddcd3d0",
-     "address": "3FcxyAjrC5fumngYg4LeNJAqPqq6QP3fKK"
-  }
-  """>
+[<CLIMutable>]
+type OrdersRecord =  {
+  Orders: OrderRecord[]
+}
+
+[<CLIMutable>]
+type TradeHistoryRecord = {
+   TradeId: int 
+   Pair: PathPair
+   OrderId: int
+   Side: string
+   Type: string
+   Amount: string
+   Price: string
+   MakerTaker: string
+   FeeAmountBase: string
+   FeeAmountQuote: string
+   ExecutedAt: string
+}
+
+[<CLIMutable>]
+type TradeHistorysRecord = {
+  Trades: TradeHistoryRecord[]
+}
+[<CLIMutable>]
+type WithdrawalAccountRecord = {
+  Uuid: string
+  Label: string
+  Address: string
+}
+
+[<CLIMutable>]
+type WithdrawalRecord = {
+  Uuid: string
+  Asset: string
+  Amount : int
+  AccountUuid: string
+  Fee: string
+  Status: string
+  Label: string
+  Txid: string
+  Address: string
+}
 
 /// Intentially not supporting async method (since nonce might not increment properly when it's used in an async method)
 /// This might have space for improvement.
-[<AutoOpen>]
 type PrivateApi(apiKey: string, apiSecret: string) =
   let hash = new HMACSHA256(Encoding.Default.GetBytes(apiSecret))
   let mutable nonce = UnixTimeNow()
+  let utf8 = System.Text.UTF8Encoding()
 
   let getHttpRequestCustomizer stringToCommit =
     nonce <- nonce + 100L // the api does not recognize if only increment one here.
-    let utf8Enc = System.Text.UTF8Encoding()
-    let message = utf8Enc.GetBytes(nonce.ToString() + stringToCommit)
+    let message = utf8.GetBytes(nonce.ToString() + stringToCommit)
     let signature = byteToHex (hash.ComputeHash(message))
     let customizer (req: HttpWebRequest) =
       req.ContentType <- "application/json"
@@ -167,18 +181,25 @@ type PrivateApi(apiKey: string, apiSecret: string) =
                   | Some i -> i.ToString() :> obj
                   | None -> "" :> obj
 
+  let failIfError (json: string) =
+    let errorResponse = JsonSerializer.Deserialize<ErrorResponse>(json, StandardResolver.CamelCase)
+    if errorResponse.Success = 0 then raise(BitBankApiException errorResponse.Data.Code)
+    json
+
   interface IDisposable with
     member this.Dispose() = hash.Dispose()
 
   member this.GetAssets() =
     None
       |> get "/user/assets"
-      |> GetAssetsResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<AssetsRecord>>(res, StandardResolver.CamelCase)
 
   member this.GetOrder (orderId: int, pair: PathPair) =
     Some [("pair", pair :> obj); ("order_id", orderId :> obj)]
       |> get "/user/spot/order"
-      |> OrderResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<OrderRecord>>(res, StandardResolver.CamelCase)
 
   member this.PostOrder(pair: PathPair, amount: string, side: string, orderType: string, ?price: int) =
     let dict = new Dictionary<string, obj>()
@@ -189,7 +210,9 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     if price <> None then dict.Add("price", optToString price)
     dict
       |> post "/user/spot/order"
-      |> OrderResponse.Parse
+      |> fun x -> printf "post order result was %s" x; x
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<OrderRecord>>(res, StandardResolver.CamelCase)
 
   member this.CancelOrder(orderId: int, pair: PathPair) =
     let dict = new Dictionary<string, obj>()
@@ -197,7 +220,8 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     dict.Add("order_id", orderId)
     dict
       |> post "/user/spot/cancel_order"
-      |> OrderResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<OrderRecord>>(res, StandardResolver.CamelCase)
 
   member this.CancelOrders(orderIds: int[], pair: PathPair) =
     let dict = new Dictionary<string, obj>()
@@ -205,12 +229,14 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     dict.Add("order_id", orderIds)
     dict
       |> post "/user/spot/cancel_orders"
-      |> OrdersResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<OrdersRecord>>(res, StandardResolver.CamelCase)
 
   member this.GetOrdersInfo(orderIds: int[], pair: PathPair) =
     Some [("order_ids", orderIds :> obj); ("pair", pair :> obj)]
       |> get "/user/spot/orders_info"
-      |> OrdersResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<OrdersRecord>>(res, StandardResolver.CamelCase)
 
   member this.GetActiveOrders(?pair: PathPair, ?count: int, ?fromId: int, ?endId: int, ?since: int, ?endDate: int) =
     [
@@ -223,7 +249,8 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     ] |> List.filter(fun tup -> snd tup <> ("" :> obj))
       |> Some
       |> get "/user/spot/active_orders"
-      |> OrdersResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<OrdersRecord>>(res, StandardResolver.CamelCase)
 
   member this.GeTradeHistory(?pair: PathPair, ?count: int, ?orderId: int, ?since: int, ?endDate: int, ?order: string) =
     [
@@ -235,12 +262,14 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     ] |> List.filter(fun tup -> snd tup <> ("" :> obj))
       |> Some
       |> get "/user/spot/trade_history"
-      |> TradeHistoryResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<TradeHistorysRecord>>(res, StandardResolver.CamelCase)
 
   member this.GetWithdrawalAccount(asset: string) =
     Some [("asset", asset :> obj)]
       |> get "/user/withdrawal_account"
-      |> WithdrawalAccountResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<WithdrawalAccountRecord>>(res, StandardResolver.CamelCase)
 
   member this.RequestWithdrawal(asset: string, amount: string, uuid: string, ?otpToken: string, ?smsToken: string) =
     let dict = new Dictionary<string, obj>()
@@ -251,4 +280,5 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     if smsToken <> None then dict.Add("sms_token", optToString smsToken)
     dict
       |> post "/user/request_withdrawal"
-      |> WithdrawalResponse.Parse
+      |> failIfError
+      |> fun res -> JsonSerializer.Deserialize<Response<WithdrawalRecord>>(res, StandardResolver.CamelCase)
