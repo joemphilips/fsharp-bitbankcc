@@ -114,8 +114,6 @@ type WithdrawalRecord = {
   Address: string
 }
 
-/// Intentially not supporting async method (since nonce might not increment properly when it's used in an async method)
-/// This might have space for improvement.
 type PrivateApi(apiKey: string, apiSecret: string) =
   let hash = new HMACSHA256(Encoding.Default.GetBytes(apiSecret))
   let mutable nonce = UnixTimeNow()
