@@ -58,11 +58,12 @@ let postOrderTest (api: PrivateApi) =
 
 let cancelOrderTest(api: PrivateApi) =
     let func = fun () -> api.CancelOrder(1, "btc_jpy")
-    failureTest func 50010
+    failureTest func 50010 // could not cancel this order
 
 let cancelOrdersTest (api: PrivateApi) =
-    let func = fun () -> api.CancelOrders([| 1; 2 |], "btc_jpy")
-    failureTest func 30007
+    let resp = api.CancelOrders([| 1; 2 |], "btc_jpy")
+    Assert.NotNull(resp)
+    Assert.True(1 = resp.Success, sprintf "failed to cancel orders. Result was %s" (resp.ToString()))
 
 let getWithdrawalTest (api: PrivateApi) =
     let resp = api.GetWithdrawalAccount("btc")
@@ -71,7 +72,7 @@ let getWithdrawalTest (api: PrivateApi) =
 
 let requestWithdrawalTest (api: PrivateApi) =
     let func = fun ()  -> api.RequestWithdrawal("jpy", "10", "37195a40-3d70-11e8-9c3c-2bd004e45303", "652036")
-    failureTest func 20011
+    failureTest func 20011 // no two-factor auth error
 
 type PrivateApiTests(output: ITestOutputHelper) =
 

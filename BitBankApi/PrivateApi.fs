@@ -143,7 +143,7 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     | [] -> ""
     | _ ->  "?" + String.concat "&" [ for k, v in items -> urlItemEncode k v]
 
-  let encodeBody (items: obj): string =
+  let rec encodeBody (items: obj): string =
     JsonSerializer.ToJsonString(items)
 
   let formatBody response =
@@ -210,7 +210,6 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     if price <> None then dict.Add("price", optToString price)
     dict
       |> post "/user/spot/order"
-      |> fun x -> printf "post order result was %s" x; x
       |> failIfError
       |> fun res -> JsonSerializer.Deserialize<Response<OrderRecord>>(res, StandardResolver.CamelCase)
 
@@ -225,8 +224,8 @@ type PrivateApi(apiKey: string, apiSecret: string) =
 
   member this.CancelOrders(orderIds: int[], pair: PathPair) =
     let dict = new Dictionary<string, obj>()
-    dict.Add("pair", pair :> obj)
-    dict.Add("order_id", orderIds)
+    dict.Add("pair", pair)
+    dict.Add("order_ids", orderIds)
     dict
       |> post "/user/spot/cancel_orders"
       |> failIfError
