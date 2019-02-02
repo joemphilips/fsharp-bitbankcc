@@ -9,6 +9,7 @@ open System.Web
 open System.Collections.Generic
 open Utf8Json
 open Utf8Json.Resolvers
+open System.Threading.Tasks
 
 type BitBankApiException(code: int) =
   inherit Exception(sprintf "Error code was %s. See %s for details" (code.ToString()) ErrorCodeDescriptionUrl)
@@ -159,18 +160,27 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     let absPath = PrivateBaseUrl + path
     let requestBody = TextRequest jsonBodyString
     let customizer = getHttpRequestCustomizer jsonBodyString
-    Http.Request(absPath, httpMethod = "POST", body = requestBody, customizeHttpRequest = customizer) |> formatBody
+    async {
+      let! resp = Http.AsyncRequest(absPath, httpMethod = "POST", body = requestBody, customizeHttpRequest = customizer)
+      return formatBody resp
+    }
 
   let getWithQuery path query =
     let queryString = query |> encodeQueryString
     let absPath = PrivateBaseUrl  + path + queryString
     let customizer = getHttpRequestCustomizer ("/v1" + path + queryString)
-    Http.Request(absPath, httpMethod = "GET", customizeHttpRequest = customizer) |> formatBody
+    async {
+      let! resp = Http.AsyncRequest(absPath, httpMethod = "GET", customizeHttpRequest = customizer)
+      return formatBody resp
+    }
 
   let getWithNoneQuery path =
     let absPath = PrivateBaseUrl + path
     let customizer = getHttpRequestCustomizer ("/v1" + path)
-    Http.Request(absPath, httpMethod = "GET", customizeHttpRequest = customizer) |> formatBody
+    async {
+      let! resp = Http.AsyncRequest(absPath, httpMethod = "GET", customizeHttpRequest = customizer)
+      return formatBody resp
+    }
 
   let get path (query: (string * _) list option) =
     match query with
@@ -189,95 +199,152 @@ type PrivateApi(apiKey: string, apiSecret: string) =
   interface IDisposable with
     member this.Dispose() = hash.Dispose()
 
+  member this.GetAssetsAsync() =
+    (async {
+      let! resp = None |> get "/user/assets"
+      let resp2 = failIfError resp
+      return JsonSerializer.Deserialize<Response<AssetsRecord>>(resp2, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
+
   member this.GetAssets() =
-    None
-      |> get "/user/assets"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<AssetsRecord>>(res, StandardResolver.CamelCase)
+    this.GetAssetsAsync().GetAwaiter().GetResult()
+
+  member this.GetOrderAcync (orderId: int, pair: PathPair) =
+    (async {
+      let! resp =  get "/user/spot/order" (Some [("pair", pair :> obj); ("order_id", orderId :> obj)])
+      let resp2 = failIfError resp
+      return JsonSerializer.Deserialize<Response<OrderRecord>>(resp2, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
 
   member this.GetOrder (orderId: int, pair: PathPair) =
-    Some [("pair", pair :> obj); ("order_id", orderId :> obj)]
-      |> get "/user/spot/order"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<OrderRecord>>(res, StandardResolver.CamelCase)
+    this.GetOrderAcync(orderId, pair).GetAwaiter().GetResult()
 
-  member this.PostOrder(pair: PathPair, amount: string, side: string, orderType: string, ?price: int) =
+  member this.PostOrderAsync(pair: PathPair, amount: string, side: string, orderType: string, ?price: int) =
     let dict = new Dictionary<string, obj>()
     dict.Add("pair", pair :> obj)
     dict.Add("amount", amount :> obj)
     dict.Add("side", side :> obj)
     dict.Add("type", orderType :> obj)
     if price <> None then dict.Add("price", optToString price)
-    dict
-      |> post "/user/spot/order"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<OrderRecord>>(res, StandardResolver.CamelCase)
+    (async {
+      let! resp = post "/user/spot/order" dict
+      failIfError resp |> ignore
+      return JsonSerializer.Deserialize<Response<OrderRecord>>(resp, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
 
-  member this.CancelOrder(orderId: int, pair: PathPair) =
+  member this.PostOrder(pair: PathPair, amount: string, side: string, orderType: string, ?price: int) =
+    match price with
+    | Some i -> this.PostOrderAsync(pair, amount, side, orderType, i).GetAwaiter().GetResult()
+    | None -> this.PostOrderAsync(pair, amount, side, orderType).GetAwaiter().GetResult()
+
+  member this.CancelOrderAsync(orderId: int, pair: PathPair) =
     let dict = new Dictionary<string, obj>()
     dict.Add("pair", pair)
     dict.Add("order_id", orderId)
-    dict
-      |> post "/user/spot/cancel_order"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<OrderRecord>>(res, StandardResolver.CamelCase)
+    (async {
+      let! resp = post "/user/spot/cancel_order" dict
+      failIfError resp |> ignore
+      return JsonSerializer.Deserialize<Response<OrderRecord>>(resp, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
 
-  member this.CancelOrders(orderIds: int[], pair: PathPair) =
+  member this.CancelOrder(orderId: int, pair: PathPair) =
+    this.CancelOrderAsync(orderId, pair).GetAwaiter().GetResult()
+
+  member this.CancelOrdersAsync(orderIds: int[], pair: PathPair) =
     let dict = new Dictionary<string, obj>()
     dict.Add("pair", pair)
     dict.Add("order_ids", orderIds)
-    dict
-      |> post "/user/spot/cancel_orders"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<OrdersRecord>>(res, StandardResolver.CamelCase)
+    (async {
+      let! resp = post "/user/spot/cancel_orders" dict
+      failIfError resp |> ignore
+      return JsonSerializer.Deserialize<Response<OrdersRecord>>(resp, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
+
+  member this.CancelOrders(orderIds: int[], pair: PathPair) =
+    this.CancelOrdersAsync(orderIds, pair).GetAwaiter().GetResult()
+
+  member this.GetOrdersInfoAsync(orderIds: int[], pair: PathPair) =
+    let arg = Some [("order_ids", orderIds :> obj); ("pair", pair :> obj)]
+    (async {
+      let! resp = get "/user/spot/orders_info" arg
+      failIfError resp |> ignore
+      return JsonSerializer.Deserialize<Response<OrdersRecord>>(resp, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
 
   member this.GetOrdersInfo(orderIds: int[], pair: PathPair) =
-    Some [("order_ids", orderIds :> obj); ("pair", pair :> obj)]
-      |> get "/user/spot/orders_info"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<OrdersRecord>>(res, StandardResolver.CamelCase)
+    this.GetOrdersInfoAsync(orderIds, pair).GetAwaiter().GetResult()
+
+  member private this.GetActiveOrdersAsyncPrivate(pair: PathPair option, count: int option, fromId: int option, endId: int option, since: int option, endDate: int option) =
+    let list = [
+        ("pair", optToString pair);
+        ("count", optToString count);
+        ("from_id", optToString fromId);
+        ("end_id", optToString endId);
+        ("since", optToString since);
+        ("end", optToString endDate);
+      ]
+    let arg = list |> List.filter(fun tup -> snd tup <> ("" :> obj))
+                   |> Some
+    (async {
+      let! resp =  get "/user/spot/active_orders"arg
+      failIfError resp |> ignore
+      return JsonSerializer.Deserialize<Response<OrdersRecord>>(resp, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
+
+  member this.GetActiveOrdersAsync(?pair: PathPair, ?count: int, ?fromId: int, ?endId: int, ?since: int, ?endDate: int) =
+    this.GetActiveOrdersAsyncPrivate(pair, count, fromId, endId, since, endDate)
 
   member this.GetActiveOrders(?pair: PathPair, ?count: int, ?fromId: int, ?endId: int, ?since: int, ?endDate: int) =
-    [
-      ("pair", optToString pair);
-      ("count", optToString count);
-      ("from_id", optToString fromId);
-      ("end_id", optToString endId);
-      ("since", optToString since);
-      ("end", optToString endDate);
-    ] |> List.filter(fun tup -> snd tup <> ("" :> obj))
-      |> Some
-      |> get "/user/spot/active_orders"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<OrdersRecord>>(res, StandardResolver.CamelCase)
+    this.GetActiveOrdersAsyncPrivate(pair, count, fromId, endId, since, endDate).GetAwaiter().GetResult()
 
-  member this.GeTradeHistory(?pair: PathPair, ?count: int, ?orderId: int, ?since: int, ?endDate: int, ?order: string) =
-    [
+  member private this.GetTradeHistoryAsync(pair: PathPair option, count: int option, orderId: int option, since: int option, endDate: int option) =
+    let list = [
       ("pair", optToString pair);
       ("count", optToString count);
       ("order_id", optToString orderId);
       ("since", optToString since);
       ("end", optToString endDate);
-    ] |> List.filter(fun tup -> snd tup <> ("" :> obj))
-      |> Some
-      |> get "/user/spot/trade_history"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<TradeHistorysRecord>>(res, StandardResolver.CamelCase)
+    ]
+    let arg = list |> List.filter(fun tup -> snd tup <> ("" :> obj))
+                   |> Some
+    (async {
+      let! resp = get "/user/spot/trade_history" arg
+      failIfError resp |> ignore
+      return JsonSerializer.Deserialize<Response<TradeHistorysRecord>>(resp, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
+
+  member this.GeTradeHistoryAsync(?pair: PathPair, ?count: int, ?orderId: int, ?since: int, ?endDate: int) =
+    this.GetTradeHistoryAsync(pair, count, orderId, since, endDate)
+
+  member this.GeTradeHistory(?pair: PathPair, ?count: int, ?orderId: int, ?since: int, ?endDate: int) =
+    this.GetTradeHistoryAsync(pair, count, orderId, since, endDate).GetAwaiter().GetResult()
+
+  member this.GetWithdrawalAccountAsync(asset: string) =
+    let arg = Some [("asset", asset :> obj)]
+    (async {
+      let! resp = get "/user/withdrawal_account" arg
+      failIfError resp |> ignore
+      return JsonSerializer.Deserialize<Response<WithdrawalAccountRecord>>(resp, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
 
   member this.GetWithdrawalAccount(asset: string) =
-    Some [("asset", asset :> obj)]
-      |> get "/user/withdrawal_account"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<WithdrawalAccountRecord>>(res, StandardResolver.CamelCase)
+    this.GetWithdrawalAccountAsync(asset).GetAwaiter().GetResult()
 
-  member this.RequestWithdrawal(asset: string, amount: string, uuid: string, ?otpToken: string, ?smsToken: string) =
+  member private this.RequestWithdrawalAsyncPrivate(asset: string, amount: string, uuid: string, otpToken: string option, smsToken: string option) =
     let dict = new Dictionary<string, obj>()
     dict.Add("asset", asset)
     dict.Add("amount", amount)
     dict.Add("uuid", uuid)
     if otpToken <> None then dict.Add("otp_token", optToString otpToken)
     if smsToken <> None then dict.Add("sms_token", optToString smsToken)
-    dict
-      |> post "/user/request_withdrawal"
-      |> failIfError
-      |> fun res -> JsonSerializer.Deserialize<Response<WithdrawalRecord>>(res, StandardResolver.CamelCase)
+    (async {
+      let! resp =  post "/user/request_withdrawal" dict
+      failIfError resp |> ignore
+      return JsonSerializer.Deserialize<Response<WithdrawalRecord>>(resp, StandardResolver.CamelCase)
+    } |> Async.StartAsTask).ConfigureAwait(false)
+
+  member this.RequestWithdrawalAsync(asset: string, amount: string, uuid: string, ?otpToken: string, ?smsToken: string) =
+    this.RequestWithdrawalAsyncPrivate(asset, amount, uuid, otpToken, smsToken)
+
+  member this.RequestWithdrawal(asset: string, amount: string, uuid: string, ?otpToken: string, ?smsToken: string) =
+    this.RequestWithdrawalAsyncPrivate(asset, amount, uuid, otpToken, smsToken).GetAwaiter().GetResult()
