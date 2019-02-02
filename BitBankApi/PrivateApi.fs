@@ -10,6 +10,7 @@ open System.Collections.Generic
 open Utf8Json
 open Utf8Json.Resolvers
 open System.Threading.Tasks
+open System.Runtime.InteropServices
 
 type BitBankApiException(code: int) =
   inherit Exception(sprintf "Error code was %s. See %s for details" (code.ToString()) ErrorCodeDescriptionUrl)
@@ -217,7 +218,7 @@ type PrivateApi(apiKey: string, apiSecret: string) =
   member this.GetOrder (orderId: int, pair: PathPair) =
     this.GetOrderAcync(orderId, pair).GetAwaiter().GetResult()
 
-  member this.PostOrderAsync(pair: PathPair, amount: string, side: string, orderType: string, ?price: int) =
+  member this.PostOrderAsync(pair: PathPair, amount: string, side: string, orderType: string, [<Optional>] ?price: int) =
     let dict = new Dictionary<string, obj>()
     dict.Add("pair", pair :> obj)
     dict.Add("amount", amount :> obj)
@@ -230,7 +231,7 @@ type PrivateApi(apiKey: string, apiSecret: string) =
       return JsonSerializer.Deserialize<Response<OrderRecord>>(resp, StandardResolver.CamelCase)
     } |> Async.StartAsTask).ConfigureAwait(false)
 
-  member this.PostOrder(pair: PathPair, amount: string, side: string, orderType: string, ?price: int) =
+  member this.PostOrder(pair: PathPair, amount: string, side: string, orderType: string, [<Optional>] ?price: int) =
     match price with
     | Some i -> this.PostOrderAsync(pair, amount, side, orderType, i).GetAwaiter().GetResult()
     | None -> this.PostOrderAsync(pair, amount, side, orderType).GetAwaiter().GetResult()
@@ -289,13 +290,23 @@ type PrivateApi(apiKey: string, apiSecret: string) =
       return JsonSerializer.Deserialize<Response<OrdersRecord>>(resp, StandardResolver.CamelCase)
     } |> Async.StartAsTask).ConfigureAwait(false)
 
-  member this.GetActiveOrdersAsync(?pair: PathPair, ?count: int, ?fromId: int, ?endId: int, ?since: int, ?endDate: int) =
+  member this.GetActiveOrdersAsync([<Optional>] ?pair: PathPair,
+                                   [<Optional>] ?count: int,
+                                   [<Optional>] ?fromId: int,
+                                   [<Optional>] ?endId: int,
+                                   [<Optional>] ?since: int,
+                                   [<Optional>] ?endDate: int) =
     this.GetActiveOrdersAsyncPrivate(pair, count, fromId, endId, since, endDate)
 
-  member this.GetActiveOrders(?pair: PathPair, ?count: int, ?fromId: int, ?endId: int, ?since: int, ?endDate: int) =
+  member this.GetActiveOrders([<Optional>] ?pair: PathPair,
+                              [<Optional>] ?count: int,
+                              [<Optional>] ?fromId: int,
+                              [<Optional>] ?endId: int,
+                              [<Optional>] ?since: int,
+                              [<Optional>] ?endDate: int) =
     this.GetActiveOrdersAsyncPrivate(pair, count, fromId, endId, since, endDate).GetAwaiter().GetResult()
 
-  member private this.GetTradeHistoryAsync(pair: PathPair option, count: int option, orderId: int option, since: int option, endDate: int option) =
+  member private this.GetTradeHistoryAsyncPrivate(pair: PathPair option, count: int option, orderId: int option, since: int option, endDate: int option) =
     let list = [
       ("pair", optToString pair);
       ("count", optToString count);
@@ -311,11 +322,19 @@ type PrivateApi(apiKey: string, apiSecret: string) =
       return JsonSerializer.Deserialize<Response<TradeHistorysRecord>>(resp, StandardResolver.CamelCase)
     } |> Async.StartAsTask).ConfigureAwait(false)
 
-  member this.GeTradeHistoryAsync(?pair: PathPair, ?count: int, ?orderId: int, ?since: int, ?endDate: int) =
-    this.GetTradeHistoryAsync(pair, count, orderId, since, endDate)
+  member this.GetTradeHistoryAsync([<Optional>] ?pair: PathPair,
+                                   [<Optional>] ?count: int,
+                                   [<Optional>] ?orderId: int,
+                                   [<Optional>] ?since: int, 
+                                   [<Optional>] ?endDate: int) =
+    this.GetTradeHistoryAsyncPrivate(pair, count, orderId, since, endDate)
 
-  member this.GeTradeHistory(?pair: PathPair, ?count: int, ?orderId: int, ?since: int, ?endDate: int) =
-    this.GetTradeHistoryAsync(pair, count, orderId, since, endDate).GetAwaiter().GetResult()
+  member this.GetTradeHistory([<Optional>] ?pair: PathPair,
+                              [<Optional>] ?count: int,
+                              [<Optional>] ?orderId: int,
+                              [<Optional>] ?since: int,
+                              [<Optional>] ?endDate: int) =
+    this.GetTradeHistoryAsyncPrivate(pair, count, orderId, since, endDate).GetAwaiter().GetResult()
 
   member this.GetWithdrawalAccountAsync(asset: string) =
     let arg = Some [("asset", asset :> obj)]
@@ -341,8 +360,8 @@ type PrivateApi(apiKey: string, apiSecret: string) =
       return JsonSerializer.Deserialize<Response<WithdrawalRecord>>(resp, StandardResolver.CamelCase)
     } |> Async.StartAsTask).ConfigureAwait(false)
 
-  member this.RequestWithdrawalAsync(asset: string, amount: string, uuid: string, ?otpToken: string, ?smsToken: string) =
+  member this.RequestWithdrawalAsync(asset: string, amount: string, uuid: string, [<Optional>] ?otpToken: string, [<Optional>] ?smsToken: string) =
     this.RequestWithdrawalAsyncPrivate(asset, amount, uuid, otpToken, smsToken)
 
-  member this.RequestWithdrawal(asset: string, amount: string, uuid: string, ?otpToken: string, ?smsToken: string) =
+  member this.RequestWithdrawal(asset: string, amount: string, uuid: string, [<Optional>] ?otpToken: string, [<Optional>] ?smsToken: string) =
     this.RequestWithdrawalAsyncPrivate(asset, amount, uuid, otpToken, smsToken).GetAwaiter().GetResult()

@@ -3,6 +3,7 @@ using Xunit;
 using BitBankApi;
 using Newtonsoft.Json.Linq;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace BitBankApi.Tests.CSharp
 {
@@ -25,6 +26,20 @@ namespace BitBankApi.Tests.CSharp
         var resp = api.GetAssets();
         Assert.True(resp.Success == 1);
         Assert.NotNull(resp.Data.Assets);
+      }
+    }
+
+    [Fact] async void PrivateAsyncApiTest1()
+    {
+      using (var api = GetPrivate())
+      {
+        var resp = await api.GetAssetsAsync();
+        Assert.True(resp.Success == 1);
+        Assert.NotNull(resp.Data.Assets);
+
+        var resp2 = await api.GetTradeHistoryAsync();
+        Assert.True(resp2.Success == 1);
+        Assert.NotNull(resp2.Data);
       }
     }
 

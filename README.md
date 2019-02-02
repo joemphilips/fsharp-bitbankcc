@@ -12,7 +12,7 @@ api.GetTicker("btc_jpy")
 // for private api
 let apiKey = "..."
 let apiSecret = "..."
-let api = new PrivateApi(apiKey, apiSecret)
+use api = new PrivateApi(apiKey, apiSecret)
 let response = api.GetAssets()
 ```
 
@@ -22,8 +22,10 @@ and it is mostly the same in C#.
 using BitBankApi
 
 // ...
-  var api = new PrivateApi("YourApiKey", "YourApiSecret");
-  var resp = api.GetAssets()
+  using(var api = new PrivateApi("YourApiKey", "YourApiSecret"));
+  {
+    var resp = api.GetAssets()
+  }
 ```
 
 async methods are prefixed with `Async` , and returns `Task<T>` (instead of F#'s `Async<T>`).
