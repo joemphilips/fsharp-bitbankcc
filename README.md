@@ -2,6 +2,8 @@
 
 ## How to use
 
+run `dotnet add package BitBankApi` in console and...
+
 ```fsharp
 open BitBankApi
 
