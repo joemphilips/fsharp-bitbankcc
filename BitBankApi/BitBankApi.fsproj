@@ -2,6 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>BitBankApi</RootNamespace>
+    <Version>1.0.0</Version>
+    <LangVersion>7.3</LangVersion>
+    <PackageId>BitBankApi</PackageId>
+    <Description>Bitbank.cc API Client for dotnet</Description>
+    <PackageProjectUrl>https://github.com/joemphilips/fsharp-bitbankcc</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/joemphilips/fsharp-bitbankcc</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>bitcoin;exchange</PackageTags>
+    <Authors>Joe Miyamoto - joemphilips@gmail.com</Authors>
   </PropertyGroup>
 
   <ItemGroup>
