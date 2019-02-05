@@ -115,7 +115,7 @@ type WithdrawalRecord = {
   Address: string
 }
 
-type PrivateApi(apiKey: string, apiSecret: string) =
+type PrivateApi(apiKey: string, apiSecret: string, [<Optional; DefaultParameterValue(PrivateBaseUrl)>] apiUrl: string) =
   let hash = new HMACSHA256(Encoding.Default.GetBytes(apiSecret))
   let mutable nonce = UnixTimeNow()
   let utf8 = System.Text.UTF8Encoding()
@@ -156,7 +156,7 @@ type PrivateApi(apiKey: string, apiSecret: string) =
 
   let post path body =
     let jsonBodyString = body |> encodeBody
-    let absPath = PrivateBaseUrl + path
+    let absPath = apiUrl + path
     let requestBody = TextRequest jsonBodyString
     let customizer = getHttpRequestCustomizer jsonBodyString
     async {
@@ -166,7 +166,7 @@ type PrivateApi(apiKey: string, apiSecret: string) =
 
   let getWithQuery path query =
     let queryString = query |> encodeQueryString
-    let absPath = PrivateBaseUrl  + path + queryString
+    let absPath = apiUrl  + path + queryString
     let customizer = getHttpRequestCustomizer ("/v1" + path + queryString)
     async {
       let! resp = Http.AsyncRequest(absPath, httpMethod = "GET", customizeHttpRequest = customizer)
@@ -174,7 +174,7 @@ type PrivateApi(apiKey: string, apiSecret: string) =
     }
 
   let getWithNoneQuery path =
-    let absPath = PrivateBaseUrl + path
+    let absPath = apiUrl + path
     let customizer = getHttpRequestCustomizer ("/v1" + path)
     async {
       let! resp = Http.AsyncRequest(absPath, httpMethod = "GET", customizeHttpRequest = customizer)

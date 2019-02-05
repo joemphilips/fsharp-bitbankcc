@@ -8,6 +8,7 @@ module Utils =
   [<Literal>]
   let BaseUrl = "https://public.bitbank.cc"
 
+  [<Literal>]
   let PrivateBaseUrl = "https://api.bitbank.cc/v1"
 
   [<Literal>]
