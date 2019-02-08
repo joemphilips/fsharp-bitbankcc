@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>BitBankApi</RootNamespace>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <LangVersion>7.3</LangVersion>
     <PackageId>BitBankApi</PackageId>
     <Description>Bitbank.cc API Client for dotnet</Description>
