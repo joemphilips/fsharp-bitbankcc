@@ -53,7 +53,7 @@ type AssetRecord = {
 
 [<CLIMutable>]
 type AssetsRecord = {
-  Assets: AssetRecord[]
+  Assets: array<AssetRecord>
 }
 
 [<CLIMutable>]
@@ -73,7 +73,7 @@ type OrderRecord = {
 
 [<CLIMutable>]
 type OrdersRecord =  {
-  Orders: OrderRecord[]
+  Orders: array<OrderRecord>
 }
 
 [<CLIMutable>]
@@ -93,7 +93,7 @@ type TradeHistoryRecord = {
 
 [<CLIMutable>]
 type TradeHistorysRecord = {
-  Trades: TradeHistoryRecord[]
+  Trades: array<TradeHistoryRecord>
 }
 [<CLIMutable>]
 type WithdrawalAccountRecord = {
@@ -135,7 +135,7 @@ type PrivateApi(apiKey: string, apiSecret: string, [<Optional; DefaultParameterV
 
   let rec urlItemEncode (k: string) (v: obj) =
     match v with
-    | :? (obj[]) as a -> [for i in a -> urlItemEncode k i] |> String.concat "&"
+    | :? (array<obj>) as a -> [for i in a -> urlItemEncode k i] |> String.concat "&"
     | _ -> HttpUtility.UrlPathEncode k + "=" + HttpUtility.UrlPathEncode (v.ToString())
 
   let encodeQueryString (items: (string * _) list): string =
@@ -249,7 +249,7 @@ type PrivateApi(apiKey: string, apiSecret: string, [<Optional; DefaultParameterV
   member this.CancelOrder(orderId: int, pair: PathPair) =
     this.CancelOrderAsync(orderId, pair).GetAwaiter().GetResult()
 
-  member this.CancelOrdersAsync(orderIds: int[], pair: PathPair) =
+  member this.CancelOrdersAsync(orderIds: array<int>, pair: PathPair) =
     let dict = new Dictionary<string, obj>()
     dict.Add("pair", pair)
     dict.Add("order_ids", orderIds)
@@ -259,10 +259,10 @@ type PrivateApi(apiKey: string, apiSecret: string, [<Optional; DefaultParameterV
       return JsonSerializer.Deserialize<Response<OrdersRecord>>(resp, StandardResolver.CamelCase)
     } |> Async.StartAsTask).ConfigureAwait(false)
 
-  member this.CancelOrders(orderIds: int[], pair: PathPair) =
+  member this.CancelOrders(orderIds: array<int>, pair: PathPair) =
     this.CancelOrdersAsync(orderIds, pair).GetAwaiter().GetResult()
 
-  member this.GetOrdersInfoAsync(orderIds: int[], pair: PathPair) =
+  member this.GetOrdersInfoAsync(orderIds: array<int>, pair: PathPair) =
     let arg = Some [("order_ids", orderIds :> obj); ("pair", pair :> obj)]
     (async {
       let! resp = get "/user/spot/orders_info" arg
@@ -270,7 +270,7 @@ type PrivateApi(apiKey: string, apiSecret: string, [<Optional; DefaultParameterV
       return JsonSerializer.Deserialize<Response<OrdersRecord>>(resp, StandardResolver.CamelCase)
     } |> Async.StartAsTask).ConfigureAwait(false)
 
-  member this.GetOrdersInfo(orderIds: int[], pair: PathPair) =
+  member this.GetOrdersInfo(orderIds: array<int>, pair: PathPair) =
     this.GetOrdersInfoAsync(orderIds, pair).GetAwaiter().GetResult()
 
   member private this.GetActiveOrdersAsyncPrivate(pair: PathPair option, count: int option, fromId: int option, endId: int option, since: int option, endDate: int option) =
