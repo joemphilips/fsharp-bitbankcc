@@ -18,6 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="TaskBuilder.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="PublicApi.fs" />
     <Compile Include="PrivateApi.fs" />
