@@ -45,7 +45,8 @@ module Utils =
     let genesis = new DateTime(1970, 1, 1)
     DateTime.UtcNow.Subtract(genesis).Ticks
 
-  let byteToHex (bytes : byte[]) =
+  let byteToHex (bytes: seq<byte>) =
    let sb = System.Text.StringBuilder()
-   bytes |> Array.iter (fun b -> b.ToString("x2") |> sb.Append |> ignore)
+   bytes
+       |> Seq.iter (fun b -> b.ToString("x2") |> sb.Append |> ignore)
    string sb
