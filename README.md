@@ -30,7 +30,9 @@ using BitBankApi
   }
 ```
 
-async methods are postfixed with `Async` , and returns `Task<T>` (instead of F#'s `Async<T>`).
+Asynchronous methods are:
+* postfixed with `Async` and return `Task<T>` (for C# consumers)
+* prefixed with `Async` and return `Async<'T>` (for F# consumers)
 
 Be careful when you use async methods that the order of executions is fixed.
 

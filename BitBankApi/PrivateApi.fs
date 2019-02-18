@@ -336,13 +336,16 @@ type PrivateApi(apiKey: string, apiSecret: string, [<Optional; DefaultParameterV
                               [<Optional>] ?endDate: int) =
     this.GetTradeHistoryAsyncPrivate(pair, count, orderId, since, endDate).GetAwaiter().GetResult()
 
-  member this.GetWithdrawalAccountAsync(asset: string) =
+  member this.AsyncGetWithdrawalAccount(asset: string) =
     let arg = Some [("asset", asset :> obj)]
-    (async {
+    async {
       let! resp = get "/user/withdrawal_account" arg
       failIfError resp |> ignore
       return JsonSerializer.Deserialize<Response<WithdrawalAccountRecord>>(resp, StandardResolver.CamelCase)
-    } |> Async.StartAsTask).ConfigureAwait(false)
+    }
+
+  member this.GetWithdrawalAccountAsync(asset: string) =
+    (this.AsyncGetWithdrawalAccount asset |> Async.StartAsTask).ConfigureAwait(false)
 
   member this.GetWithdrawalAccount(asset: string) =
     this.GetWithdrawalAccountAsync(asset).GetAwaiter().GetResult()
